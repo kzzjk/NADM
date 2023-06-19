@@ -1,0 +1,160 @@
+OUTPUT_DIR: './test_output'
+####################################### DATASETS #######################################
+DATASETS:
+  TRAIN: 'MIMICxrayDataset'
+  VAL: 'MIMICxrayDataset'
+  TEST: 'MIMICxrayDataset'
+SEED: 41
+SAVE_BEST: TRUE
+###################################### DATALOADER ######################################
+DATALOADER:
+  TRAIN_BATCH_SIZE: 32
+  TEST_BATCH_SIZE: 32
+  NUM_WORKERS: 4
+  FEATS_FOLDER: '../mimic_cxr/mimic_himl_224_2048'
+  ANNO_FOLDER:  '../mimic_cxr/new_data3'
+  SEQ_PER_SAMPLE:  1
+  MAX_FEAT_NUM: 50
+  IMAGE_FOLDER: '../mimic_cxr/images'
+  LABEL_FOLDER: '../mimic_cxr/new_data/mimic_semiclabel.pkl'
+######################################### Engine #########################################
+ENGINE:
+  NAME: 'DefaultTrainer'
+
+######################################### Scheduled sampling #########################################
+SCHEDULED_SAMPLING:
+  START_EPOCH: 999
+  INC_EVERY_EPOCH: 5
+  INC_PROB: 0.05
+  MAX_PROB: 0.25
+
+######################################### MODEL #########################################
+MODEL:
+  VOCAB_SIZE: 4366 # include <BOS>/<EOS>
+  META_ARCHITECTURE: 'TransformerEncoderDecoder'
+  ENCODER: 'MYEncoder'
+  ENCODER_DIM: 512
+  DECODER: 'COSNetDecoder'
+  DECODER_DIM: 512
+  PREDICTOR: 'MYPredictor'
+  PRED_DROPOUT: 0.5
+  MAX_SEQ_LEN: 100
+
+#################################### BACKBONE ####################################
+  BACKBONE:
+    NAME: 'BioResnet50'
+    FREEZE_ENCODER: False
+    PRETRAINED: '/home/ell/X-ray/paper_code/BiomedVLP-CXR-BERT-specialized/biovil_image_resnet50_proj_size_128.pt'
+####################################### MESHED_MEORY ############################################
+#  MESHEDMEORY:
+#    ENCODER:
+#      DIM_MODEL: 512
+#      NUM_LAYER: 3
+#      NUM_ATT_HEAD: 8
+#      NUM_ATT_MEMORY: 40
+#      DIM_FEEDFORWARD: 2048
+#      DROPOUT: 0.1
+#    DECODER:
+#      DIM_MODEL: 512
+#      NUM_LAYER: 3
+#      NUM_ATT_HEAD: 8
+#      DIM_FEEDFORWARD: 2048
+#      DROPOUT: 0.1
+#################################### Token embedding ####################################
+  TOKEN_EMBED:
+    NAME: 'TokenBaseEmbedding'
+    DIM: 512
+    ACTIVATION: 'none'
+    USE_NORM: True
+    DROPOUT: 0.1
+    POSITION: 'SinusoidEncoding'
+
+#################################### Visual embedding ####################################
+  VISUAL_EMBED:
+    NAME: 'VisualGridEmbedding'
+    IN_DIM: 2048
+    G_IN_DIM: 2048
+    OUT_DIM: 512
+    ACTIVATION: 'relu'
+    USE_NORM: True
+    DROPOUT: 0.5
+
+    
+####################################### BERT ############################################
+  BERT:
+    HIDDEN_SIZE: 512
+    HIDDEN_DROPOUT_PROB: 0.1
+    HIDDEN_ACT: "relu"
+    NUM_ATTENTION_HEADS: 8
+    INTERMEDIATE_SIZE: 2048
+    INTERMEDIATE_DROP: 0.1
+    FFN_DROPOUT_PROB: 0.1
+    ATTENTION_PROBS_DROPOUT_PROB: 0.1
+    NUM_HIDDEN_LAYERS: 3
+    NUM_GENERATION_LAYERS: 3
+
+  SEMICNET:
+    NUM_CLASSES: 4366
+    NUM_SEMCOMPHDER_LAYERS: 3
+    BEGIN_LAYERS: 1
+    NORMAL_WEIGHT: 0.1
+    ABNORMAL_WEIGHT: 0.1
+    SLOT_SIZE: 1
+  
+####################################### Optimizer #######################################
+SOLVER:
+  NAME: 'AdamW'
+  EPOCH: 20
+  CHECKPOINT_PERIOD: 1
+  EVAL_PERIOD: 1
+  BASE_LR: 0.000005
+  BIAS_LR_FACTOR: 1.0
+  WEIGHT_DECAY: 0.0
+  WEIGHT_DECAY_NORM: 0.0
+  WEIGHT_DECAY_BIAS: 0.0
+  MOMENTUM: 0.9
+  DAMPENING: 0.0
+  NESTEROV: 0.0
+  BETAS: [0.9, 0.98]
+  EPS: 1e-9
+  GRAD_CLIP: 0.1
+  GRAD_CLIP_TYPE: 'value'
+  NORM_TYPE: 2.0
+  WRITE_PERIOD: 1000
+####################################### lr scheduler ####################################### 
+LR_SCHEDULER:
+  NAME: 'WarmupCosine'
+  MODEL_SIZE: 512
+  FACTOR: 1.0
+  WARMUP: 1
+  MIN_LR: 0.0000005
+
+####################################### losses ####################################### 
+LOSSES:
+  NAMES: ['myLabelSmoothing','MYLoss']
+  LABELSMOOTHING: 0.1
+
+####################################### scorer ####################################### 
+SCORER:
+  NAME: 'BaseScorer'
+  TYPES: ['Cider']
+  WEIGHTS: [1.0]
+  GT_PATH: '../mimic_cxr/new_data/mimic_train_gts.pkl'
+  CIDER_CACHED: '../mimic_cxr/new_data/mimic_train_cider.pkl'
+  EOS_ID: 0
+
+####################################### decode strategy ####################################### 
+DECODE_STRATEGY:
+  NAME: 'BeamSearcher'
+  BEAM_SIZE: 3
+
+####################################### evaluation ####################################### 
+INFERENCE:
+  NAME: 'COCOEvaler'
+  VOCAB: '../mimic_cxr/new_data/mimic_vocabulary.txt'
+  ID_KEY: 'image_id'
+  VALUE: 'caption'
+  VAL_ANNFILE: '../mimic_cxr/new_data/captions_val_cocostyle.json'
+  TEST_ANNFILE: '../mimic_cxr/new_data/captions_test_cocostyle.json'
+  GENERATION_MODE: True
+
