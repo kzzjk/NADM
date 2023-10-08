@@ -229,13 +229,13 @@ class MYEncoder(nn.Module):
 
             slot_embed = self.slot_embeddings(self.slot)
             slot_embed = slot_embed.expand(semic_input.shape[0], slot_embed.shape[1], slot_embed.shape[2])
-            semantics_normal_embed = torch.cat([tag_abnormal_embedding, slot_embed], dim=1)
+            semantics_normal_embed = torch.cat([tag_abnormal_embedding.detach(), slot_embed], dim=1)
             normal_mask = torch.ones((semantics_normal_embed.shape[0], semantics_normal_embed.shape[1]),
                                      device=semantics_normal_embed.device).to(dtype=next(self.parameters()).dtype)
             normal_mask = (1.0 - normal_mask) * -10000.0
             normal_mask = normal_mask.unsqueeze(1).unsqueeze(2)
             for layer_module in self.semic_normal_layers:
-                semantics_normal_embed = layer_module(semantics_normal_embed.detach(), encoder_vfeats.detach(), normal_mask, ext_vmasks)
+                semantics_normal_embed = layer_module(semantics_normal_embed, encoder_vfeats.detach(), normal_mask, ext_vmasks)
             semantics_normal_pred = self.semantics_normal_pred(semantics_normal_embed[:, -1, :])
 
             tag_normal_embedding,pred_normal_topk = self.semic_label(batched_inputs,semantics_normal_pred,'NORMAL')
